@@ -7,7 +7,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard
 from tensorflow.keras.losses import binary_crossentropy
 from tensorflow.keras.optimizers import RMSprop, Adam, SGD
 
-from datasets.dsb_binary import DSB2018BinaryDataset
+from datasets.brats_binary import DSB2018BinaryDataset
 from losses import make_loss, hard_dice_coef, hard_dice_coef_ch1
 from models.model_factory import make_model
 from params import args

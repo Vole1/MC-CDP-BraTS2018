@@ -6,7 +6,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras.optimizers import RMSprop
 
-from datasets.dsb_binary import DSB2018BinaryDataset
+from datasets.brats_binary import DSB2018BinaryDataset
 from losses import binary_crossentropy, make_loss, hard_dice_coef_ch1, hard_dice_coef
 from models.model_factory import make_model
 from params import args

@@ -8,7 +8,7 @@ import tensorflow as tf
 from tensorflow.keras.metrics import Mean
 from tensorflow.keras.optimizers import RMSprop
 
-from datasets.dsb_binary import DSB2018BinaryDataset
+from datasets.brats_binary import DSB2018BinaryDataset
 from losses import binary_crossentropy, make_loss, hard_dice_coef_ch1, hard_dice_coef
 from metrics_do import actual_accuracy_and_confidence, brier_score, entropy, compute_mce_and_correct_ece, \
     compute_FTP_and_FTN, compute_filtered_hard_dice, compute_TP_and_TN
