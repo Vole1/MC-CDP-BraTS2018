@@ -36,7 +36,7 @@ class BaseMaskDatasetIterator(Iterator):
         super(BaseMaskDatasetIterator, self).__init__(len(self.image_ids), batch_size, shuffle, seed)
 
     @abstractmethod
-    def transform_mask(self, mask, image):
+    def transform_mask(self, mask):
         raise NotImplementedError
 
     def get_output_shape(self):
@@ -87,12 +87,16 @@ class BaseMaskDatasetIterator(Iterator):
             img_path = self.image_paths[image_index]
             if img_path.endswith(('.png', '.jpg', '.jpeg', '.bmp', '.ppm')):
                 image = np.array(img_to_array(load_img(img_path)), "uint8")
+            elif img_path.endswith('.npy'):             # image-like array with more than 3 channels formatted - [W*H*C]
+                image = np.load(img_path)
             else:
                 raise ValueError("Unsupported type of image input data")
 
             mask_path = self.image_paths[image_index].replace(self.images_dir, self.masks_dir)
             if mask_path.endswith(('.png', '.jpg', '.jpeg', '.bmp', '.ppm')):
                 mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+            elif mask_path.endswith('.npy'):
+                mask = np.load(mask_path)
             else:
                 raise ValueError("Unsupported type of mask input data")
 
@@ -101,14 +105,14 @@ class BaseMaskDatasetIterator(Iterator):
                 crop_mask, crop_image = self.crop_mask_and_image(mask, image, self.crop_shape)
                 if len(np.shape(crop_mask)) == 2:
                     crop_mask = np.expand_dims(crop_mask, -1)
-                crop_mask = self.transform_mask(crop_mask, crop_image)
+                #crop_mask = self.transform_mask(crop_mask)
                 batch_x.append(crop_image)
                 batch_y.append(crop_mask)
             elif self.resize_shape is not None and self.resize_shape != (None, None):
                 resized_image = cv2.resize(image, tuple(self.resize_shape[j] for j in range(len(self.resize_shape))))
                 resized_mask = cv2.resize(mask, tuple(self.resize_shape[j] for j in range(len(self.resize_shape))))
                 batch_x.append(resized_image)
-                resized_mask = self.transform_mask(resized_mask, resized_image)
+                #resized_mask = self.transform_mask(resized_mask)
                 batch_y.append(resized_mask)
             else:
                 x0, x1, y0, y1 = 0, 0, 0, 0
@@ -121,7 +125,7 @@ class BaseMaskDatasetIterator(Iterator):
                 image = np.pad(image, ((y0, y1), (x0, x1), (0, 0)), 'reflect')
                 mask = np.pad(mask, ((y0, y1), (x0, x1), (0, 0)), 'reflect')
                 batch_x.append(image)
-                mask = self.transform_mask(mask, image)
+                #mask = self.transform_mask(mask)
                 batch_y.append(mask)
         batch_x = np.array(batch_x, dtype="float32")
         batch_y = np.array(batch_y, dtype="float32")
@@ -143,16 +147,11 @@ class BaseMaskDatasetIterator(Iterator):
             input()
             return batch_x
 
-    def preprocess_batch_y(self, batch_y):
-        if self.max_msk_value is None:
-            return batch_y
-        if self.max_msk_value <= 4:
-            return np.where(batch_y < 1, batch_y, 1)
-        batch_y[:, -1, -1, -1] = self.max_msk_value
-        norm_batch_y = cv2.normalize(batch_y, dst=None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
-        norm_batch_y[:, -1, -1, -1] = norm_batch_y[:, -2, -2, -2]
-        batch_y[:, -1, -1, -1] = batch_y[:, -2, -2, -2]
-        return norm_batch_y
+    def preprocess_batch_y(self, batch_y, mode='WT'):
+        if mode == 'WT':
+            return np.where(batch_y > 1, 1, batch_y)
+        else:
+            raise NotImplementedError(f'Uknown mask preprocessing mode {mode}')
 
     def next(self):
         with self.lock:

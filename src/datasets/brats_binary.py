@@ -105,7 +105,7 @@ class DSB2018BinaryDatasetIterator(BaseMaskDatasetIterator):
         super().__init__(images_dir, masks_dir, image_ids, images_paths, channels, crop_shape, resize_shape,
                          preprocessing_function, batch_size, shuffle, seed)
 
-    def transform_mask(self, mask, image):
+    def transform_mask(self, mask):
         mask[mask > 127] = 255
         mask = np.clip(mask, 0, 255)
         return np.array(mask, "float32") / 255.
