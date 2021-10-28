@@ -157,5 +157,3 @@ class BaseMaskDatasetIterator(Iterator):
         with self.lock:
             index_array = next(self.index_generator)
         return self._get_batches_of_transformed_samples(index_array)
-
-
