@@ -2,7 +2,7 @@
 
 ##################### Nasnet Concrete Droppath ##############################
 
-python test.py \
+python test_with_do.py \
 --channels 4 \
 --num_workers 8 \
 --network nasnet_cdp \
@@ -14,5 +14,5 @@ python test.py \
 --out_channels 2 \
 --test_images_dir ../data_test/images \
 --test_masks_dir ../data_test/masks \
---models best_nii_mc_cdp_nasnet_cdp.h5
+--models best_mc_nasnet_cdp.h5
 

@@ -57,7 +57,7 @@ def main():
                        do_rate=args.dropout_rate,
                        total_training_steps=args.epochs*args.steps_per_epoch)
     if args.weights is None:
-        print('No weights passed, training from scratch')
+        print('No full model weights passed')
     else:
         weights_path = os.path.join(args.models_dir, args.weights)
         print('Loading weights from {}'.format(weights_path))
@@ -74,8 +74,13 @@ def main():
         elif args.optimizer == 'sgd':
             optimizer = SGD(lr=args.learning_rate, momentum=0.9, nesterov=True, decay=float(args.decay))
     dataset = DSB2018BinaryDataset(args.images_dir, args.masks_dir, args.channels, seed=args.seed)
-    train_generator = dataset.train_generator((args.crop_size, args.crop_size), (args.resize_size, args.resize_size), args.preprocessing_function, batch_size=args.batch_size)
-    val_generator = dataset.val_generator((args.resize_size, args.resize_size), args.preprocessing_function, batch_size=args.batch_size)
+    train_generator = dataset.train_generator((args.crop_size, args.crop_size),
+                                              (args.resize_size, args.resize_size),
+                                              args.preprocessing_function,
+                                              batch_size=args.batch_size)
+    val_generator = dataset.val_generator((args.resize_size, args.resize_size),
+                                          args.preprocessing_function,
+                                          batch_size=args.batch_size)
     best_model_file = '{}/best_{}_{}.h5'.format(args.models_dir, args.alias, args.network)
 
     best_model = ModelCheckpoint(filepath=best_model_file, monitor='val_loss',
@@ -89,7 +94,7 @@ def main():
     last_model = ModelCheckpoint(filepath=last_model_file, monitor='val_loss',
                                  verbose=1,
                                  mode='min',
-                                 period=int(args.save_period)*args.steps_per_epoch,
+                                 save_freq=int(args.save_period)*args.steps_per_epoch,
                                  save_best_only=False,
                                  save_weights_only=True)
     model.compile(loss=make_loss(args.loss_function),

@@ -15,26 +15,17 @@ np.random.seed(1)
 random.seed(1)
 tf.random.set_seed(1)
 
-
-#test_pred = os.path.join(args.out_root_dir, args.out_masks_folder)
-
-all_ids = []
-all_images = []
-all_masks = []
-
-OUT_CHANNELS = args.out_channels
+if args.gpu is not None:
+    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
 
-gpus = tf.config.experimental.list_physical_devices('GPU')
-for gpu in gpus:
-    tf.config.experimental.set_memory_growth(gpu, True)
-
-
-if __name__ == '__main__':
+def main():
+    gpus = tf.config.experimental.list_physical_devices('GPU')
+    for gpu in gpus:
+        tf.config.experimental.set_memory_growth(gpu, True)
     t0 = timeit.default_timer()
 
-    weights = [os.path.join(args.models_dir, m) for m in args.models]
-    models = []
+    weights = os.path.join(args.models_dir, args.model)
     if args.crop_size:
         print('Using crops of shape ({}, {})'.format(args.crop_size, args.crop_size))
         input_shape = (args.crop_size, args.crop_size, args.channels)
@@ -45,30 +36,31 @@ if __name__ == '__main__':
         print('Using sized images (256, 256)')
         input_shape = (256, 256, args.channels)
 
-    for w in weights:
-        model = make_model(args.network,
-                           input_shape,
-                           pretrained_weights=args.pretrained_weights)
-        print("Building model {} from weights {} ".format(args.network, w))
-        model.load_weights(w)
-        models.append(model)
+    model = make_model(args.network,
+                       input_shape,
+                       pretrained_weights=args.pretrained_weights)
+    print("Building model {} from weights {} ".format(args.network, weights))
+    model.load_weights(weights)
 
     dataset = DSB2018BinaryDataset(args.test_images_dir, args.test_masks_dir, args.channels, seed=args.seed)
     data_generator = dataset.test_generator((args.resize_size, args.resize_size), args.preprocessing_function, batch_size=args.batch_size)
     optimizer = RMSprop(lr=args.learning_rate)
     print('Predicting test')
 
-    for i, model in enumerate(models):
-        print(f'Evaluating {weights[i]} model')
+    print(f'Evaluating {weights} model')
 
-        model.compile(loss=make_loss(args.loss_function),
-                  optimizer=optimizer,
-                  metrics=[binary_crossentropy, hard_dice_coef_ch1, hard_dice_coef])
+    model.compile(loss=make_loss(args.loss_function),
+              optimizer=optimizer,
+              metrics=[binary_crossentropy, hard_dice_coef_ch1, hard_dice_coef])
 
-        test_loss = model.evaluate(data_generator, verbose=1)
-        print(f'{weights[i]} evaluation results:')
-        for el in list(zip([args.loss_function, 'binary_crossentropy', 'hard_dice_coef_ch1', 'hard_dice_coef', 'hard_dice_coef_combined'], test_loss)):
-            print(f'{el[0]}: {el[1]}')
+    test_loss = model.evaluate(data_generator, verbose=1)
+    print(f'{weights} evaluation results:')
+    for el in list(zip([args.loss_function, 'binary_crossentropy', 'hard_dice_coef_ch1', 'hard_dice_coef'], test_loss)):
+        print(f'{el[0]}: {el[1]}')
 
     elapsed = timeit.default_timer() - t0
     print('Time: {:.3f} min'.format(elapsed / 60))
+
+
+if __name__ == '__main__':
+    main()
