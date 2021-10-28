@@ -265,5 +265,6 @@ def Xception(include_top=True, weights='imagenet',
         K.set_image_data_format(old_data_format)
     return model
 
+
 if __name__ == '__main__':
     Xception(include_top=False, input_shape=(256, 256, 3)).summary()

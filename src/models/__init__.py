@@ -2,9 +2,10 @@ from enum import Enum
 
 
 class NetType(Enum):
-    cdo = 'Concrete dropout',
-    cdp = 'Concrete droppath',
-    mc_do = 'Monte-Carlo dropout',
-    mc_df = 'Monte-Carlo dropfilter',
-    sdo = 'Scheduled dropout'
+    cdo = 'Monte-Carlo Concrete Dropout',
+    cdp = 'Monte-Carlo Concrete Droppath',
+    mc_do = 'Monte-Carlo Dropout',
+    mc_df = 'Monte-Carlo Dropfilter',
+    #sdo = 'Monte-Carlo Scheduled Dropout'
+    sdp = 'Monte-Carlo Scheduled Droppath'
     vanilla = 'vanilla',

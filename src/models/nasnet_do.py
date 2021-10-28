@@ -26,11 +26,9 @@ from __future__ import print_function
 import os
 import warnings
 
-import h5py
-import numpy as np
 import tensorflow as tf
 from keras_applications.imagenet_utils import _obtain_input_shape
-from models.nasnet_utils_do import ScheduledDropout, ConcreteDropout, ConcreteDroppath
+from models.nasnet_utils_do import ScheduledDroppath, ConcreteDropout, ConcreteDroppath
 from tensorflow.keras import backend as K
 from tensorflow.keras import layers
 from tensorflow.keras.layers import Activation
@@ -58,8 +56,8 @@ TF_NASNET_LARGE_WEIGHT_PATH_NO_TOP = 'https://storage.googleapis.com/tensorflow/
 
 
 def NASNet_large_do(net_type, include_top=True, do_rate=0.3, weights='imagenet', input_tensor=None,
-                    input_shape=None, total_training_steps=None, penultimate_filters=4032, num_blocks=6, stem_block_filters=96,
-                    skip_reduction=True, filter_multiplier=2, pooling=None, classes=1000):
+                    input_shape=None, total_training_steps=None, penultimate_filters=4032, num_blocks=6,
+                    stem_block_filters=96, skip_reduction=True, filter_multiplier=2, pooling=None, classes=1000):
     """Instantiates a NASNet model.
 
     Optionally loads weights pre-trained
@@ -76,8 +74,9 @@ def NASNet_large_do(net_type, include_top=True, do_rate=0.3, weights='imagenet',
             specified in models.__init__.py.
         include_top: whether to include the fully-connected
             layer at the top of the network.
-        do_rate: dropout or droppath rate.
+        do_rate: dropout or droppath rate (if needed).
         weights: `None` (random initialization) or
+          path to weights file which meets network requirements or
           `imagenet` (ImageNet weights)
           For loading `imagenet` weights, `input_shape` should be (331, 331, 3)
         input_tensor: optional Keras tensor (i.e. output of `layers.Input()`)
@@ -185,11 +184,11 @@ def NASNet_large_do(net_type, include_top=True, do_rate=0.3, weights='imagenet',
     x = Conv2D(stem_block_filters, (3, 3), strides=(2, 2), padding="same",
                use_bias=False, name='stem_conv1', kernel_initializer='he_normal')(img_input)
     x = BatchNormalization(momentum=0.9997, epsilon=1e-3, name='stem_bn1')(x)
+    #conv1
     if net_type == NetType.mc_do:
         x = Dropout(do_rate, name='dropout')(x, training=True)
     elif net_type == NetType.mc_df:
         x = Dropout(do_rate, noise_shape=(x.shape[0], 1, 1, x.shape[-1]), name='dropfilter')(x, training=True)
-    #conv1
 
     total_num_cells = 4 + 3 * num_blocks
     cell_counter = 0
@@ -256,9 +255,9 @@ def NASNet_large_do(net_type, include_top=True, do_rate=0.3, weights='imagenet',
     model = Model(inputs, x, name='NASNet')
     # Create donor model
     if input_shape[-1] > 3 and weights is not None:
-        input_shape1 = (*input_shape[:-1], 3)
+        donor_input_shape = (*input_shape[:-1], 3)
         donor_model = get_donor_model(include_top, input_tensor=None,
-                                      input_shape=input_shape1,
+                                      input_shape=donor_input_shape,
                                       penultimate_filters=penultimate_filters,
                                       num_blocks=num_blocks,
                                       stem_block_filters=stem_block_filters,
@@ -282,10 +281,16 @@ def NASNet_large_do(net_type, include_top=True, do_rate=0.3, weights='imagenet',
                                         cache_subdir='models',
                                         file_hash='d81d89dc07e6e56530c4e77faddd61b5')
         else:
-            raise ValueError('This is an unexpected value for "weights" parameter')
+            print('Parameter "pretrained_weights" is expected to be "imagenet". However you can pass path to weights '
+                  'if you are sure about what you are doing!')
+            if os.path.exists(weights):
+                weights_path = weights
+            else:
+                print('Parameter "pretrained_weights" is expected to be "imagenet" or path to weights. Considered to '
+                      f'be path, but it doesn\'t exist: {weights}')
         if input_shape[-1] > 3:
             print(
-                f'Copying pretrained ImageNet weights to model with {input_shape[-1]} input channels for NASNet backbone')
+                f'Copying pretrained weights to model with {input_shape[-1]} input channels for NASNet backbone')
             donor_model.load_weights(weights_path)
 
             donor_model_layers_weights = [d_l for d_l in donor_model.layers if len(d_l.weights) > 0]
@@ -324,19 +329,6 @@ def NASNet_large_do(net_type, include_top=True, do_rate=0.3, weights='imagenet',
                         if k == len(donor_model_layers_weights) -1:
                             raise ValueError
             assert j == len(donor_model_layers_weights)
-
-            if weights != 'imagenet':
-                print(f'Loading trained "{weights}" weights')
-                f = h5py.File(weights, 'r')
-                for i, l in enumerate(model.layers):
-                    l_ws = l.weights
-                    d_ws = [f[l.name][l_w.name] for l_w in l_ws]
-                    if i == 1:
-                        new_w = np.concatenate((d_ws[0].value, l.weights[0].numpy()[..., 3:, :]), axis=-2)
-                        l.weights[0].assign(new_w)
-                        continue
-                    for (w, d_w) in zip(l.weights, d_ws):
-                        w.assign(d_w.value)
             del donor_model
         else:
             model.load_weights(weights_path)
@@ -357,6 +349,8 @@ def _separable_conv_block_do(ip, filters, net_type, kernel_size=(3, 3), strides=
     Args:
         ip: Input tensor
         filters: Number of output filters per layer
+        net_type: type of dropout or droppath to use in the network
+            specified in models.__init__.py.
         kernel_size: Kernel size of separable convolutions
         strides: Strided convolution for downsampling
         do_rate: Dropout or droppath rate
@@ -395,12 +389,12 @@ def _separable_conv_block_do(ip, filters, net_type, kernel_size=(3, 3), strides=
                 (x, training=True)
         x = Activation('relu')(x)
 
-        if net_type == NetType.sdo:
+        if net_type == NetType.sdp:
             if cell_num is None or total_num_cells is None:
                 raise ValueError('Please specify cell number for correct Scheduled MC dropout')
-            x = ScheduledDropout(do_rate, cell_num=cell_num, total_num_cells=total_num_cells,
-                                 total_training_steps=total_training_steps, name='scheduled_dropout_%s' % (block_id))\
-                (x, training=None)
+            x = ScheduledDroppath(do_rate, cell_num=cell_num, total_num_cells=total_num_cells,
+                                 total_training_steps=total_training_steps, name='scheduled_droppath_%s' % (block_id))\
+                (x, training=True)
         elif net_type == NetType.cdo:
             x = ConcreteDropout(name='concrete_dropout_%s' % (block_id))(x, training=True)
         elif net_type == NetType.cdp:
@@ -614,7 +608,8 @@ def _normal_a_cell(ip, p, filters, block_id=None):
     return x, ip
 
 
-def _reduction_a_cell_do(ip, p, filters, net_type, cell_num, total_num_cells, total_training_steps, do_rate=0.3, block_id=None):
+def _reduction_a_cell_do(ip, p, filters, net_type, cell_num, total_num_cells, total_training_steps, do_rate=0.3,
+                         block_id=None):
     """Adds a Reduction cell for NASNet-A (Fig. 4 in the paper).
 
     Args:

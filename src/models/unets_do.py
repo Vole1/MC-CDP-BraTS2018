@@ -43,17 +43,6 @@ def conv_bn_relu(input, num_channel, kernel_size, stride, name, padding='same', 
     return x
 
 
-def conv_bn(input, num_channel, kernel_size, stride, name, padding='same', bn_axis=-1, bn_momentum=0.99, bn_scale=True,
-            use_bias=True):
-    x = Conv2D(filters=num_channel, kernel_size=(kernel_size, kernel_size),
-               strides=stride, padding=padding,
-               kernel_initializer="he_normal",
-               use_bias=use_bias,
-               name=name + "_conv")(input)
-    x = BatchNormalization(name=name + '_bn', scale=bn_scale, axis=bn_axis, momentum=bn_momentum, epsilon=1.001e-5, )(x)
-    return x
-
-
 def conv_relu(input, num_channel, kernel_size, stride, name, padding='same', use_bias=True, activation='relu'):
     x = Conv2D(filters=num_channel, kernel_size=(kernel_size, kernel_size),
                strides=stride, padding=padding,
@@ -92,14 +81,6 @@ def create_pyramid_features(C1, C2, C3, C4, C5, feature_size=256):
     P1 = Conv2D(feature_size, kernel_size=3, strides=1, padding='same', name='P1', kernel_initializer="he_normal")(P1)
 
     return P1, P2, P3, P4, P5
-
-
-def decoder_block(input, filters, skip, block_name):
-    x = UpSampling2D()(input)
-    x = conv_bn_relu(x, filters, 3, stride=1, padding='same', name=block_name + '_conv1')
-    x = concatenate([x, skip], axis=-1, name=block_name + '_concat')
-    x = conv_bn_relu(x, filters, 3, stride=1, padding='same', name=block_name + '_conv2')
-    return x
 
 
 def decoder_block_no_bn(input, filters, skip, block_name, activation='relu'):
@@ -183,14 +164,15 @@ def densenet_fpn(input_shape, channels=1, activation="sigmoid"):
     return model
 
 
-def nasnet_fpn_do(input_shape, net_type, channels=1, do_rate=0.3, total_training_steps=None, weights='imagenet', activation="softmax"):
+def nasnet_fpn_do(input_shape, net_type, channels=1, do_rate=0.3, total_training_steps=None, weights='imagenet',
+                  activation="softmax"):
     nasnet = NASNet_large_do(input_shape=input_shape, net_type=net_type, do_rate=do_rate, include_top=False,
                              total_training_steps=total_training_steps, weights=weights)
     conv1 = nasnet.get_layer("activation").output  # ("stem_bn1").output
     conv2 = nasnet.get_layer("reduction_concat_stem_1").output
     conv3 = nasnet.get_layer("activation_134").output  # ("normal_concat_5").output
-    conv4 = nasnet.get_layer("activation_252").output  # ("normal_concat_12").output  # shape: (batch_size, 16, 16, channels)
-    conv5 = nasnet.get_layer("normal_concat_18").output  # ("normal_concat_18").output  # shape: (batch_size, 8, 8, channels)
+    conv4 = nasnet.get_layer("activation_252").output  # ("normal_concat_12").output
+    conv5 = nasnet.get_layer("normal_concat_18").output  # ("normal_concat_18").output
 
     P1, P2, P3, P4, P5 = create_pyramid_features(conv1, conv2, conv3, conv4, conv5)
     x = concatenate(
@@ -231,6 +213,12 @@ def nasnet_df_fpn(input_shape, channels=1, do_rate=0.3, weights='imagenet', acti
     return nasnet_fpn_do(input_shape, NetType.mc_df, channels, do_rate, weights=weights, activation=activation)
 
 
-def nasnet_sdo_fpn(input_shape, channels=1, do_rate=0.3, total_training_steps=None, weights='imagenet',
+# validate train process
+# def nasnet_sdo_fpn(input_shape, channels=1, do_rate=0.3, total_training_steps=None, weights='imagenet',
+#                    activation="sigmoid"):
+#     return nasnet_fpn_do(input_shape, NetType.sdo, channels, do_rate, total_training_steps, weights, activation)
+
+
+def nasnet_sdp_fpn(input_shape, channels=1, do_rate=0.3, total_training_steps=None, weights='imagenet',
                    activation="sigmoid"):
-    return nasnet_fpn_do(input_shape, NetType.sdo, channels, do_rate, total_training_steps, weights, activation)
+    return nasnet_fpn_do(input_shape, NetType.sdp, channels, do_rate, total_training_steps, weights, activation)
