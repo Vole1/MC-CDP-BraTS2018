@@ -14,5 +14,5 @@ python test_with_do.py \
 --out_channels 2 \
 --test_images_dir ../data_test/images \
 --test_masks_dir ../data_test/masks \
---models best_mc_nasnet_cdp.h5
+--model best_mc_nasnet_cdp.h5
 

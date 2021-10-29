@@ -213,10 +213,9 @@ def nasnet_df_fpn(input_shape, channels=1, do_rate=0.3, weights='imagenet', acti
     return nasnet_fpn_do(input_shape, NetType.mc_df, channels, do_rate, weights=weights, activation=activation)
 
 
-# validate train process
-# def nasnet_sdo_fpn(input_shape, channels=1, do_rate=0.3, total_training_steps=None, weights='imagenet',
-#                    activation="sigmoid"):
-#     return nasnet_fpn_do(input_shape, NetType.sdo, channels, do_rate, total_training_steps, weights, activation)
+def nasnet_sdo_fpn(input_shape, channels=1, do_rate=0.3, total_training_steps=None, weights='imagenet',
+                   activation="sigmoid"):
+    return nasnet_fpn_do(input_shape, NetType.sdo, channels, do_rate, total_training_steps, weights, activation)
 
 
 def nasnet_sdp_fpn(input_shape, channels=1, do_rate=0.3, total_training_steps=None, weights='imagenet',
