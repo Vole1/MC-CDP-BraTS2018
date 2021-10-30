@@ -233,7 +233,7 @@ class ConcreteDropout(Layer):
                                        initializer=tf.initializers.RandomUniform(self.init_min, self.init_max),
                                        trainable=True)
         # initialise regulariser / prior KL term
-        input_dim = np.prod(input_shape[1, 2])
+        input_dim = np.prod(input_shape[1:])
         dropout_regularizer = self.get_p() * K.log(self.get_p())
         dropout_regularizer += (1. - self.get_p()) * K.log(1. - self.get_p())
         dropout_regularizer *= self.dropout_regularizer * input_dim
@@ -255,7 +255,7 @@ class ConcreteDropout(Layer):
 
         eps = K.cast_to_floatx(K.epsilon())
         temp = 0.1
-        unif_noise = K.random_uniform(shape=[K.shape(x)[0], K.shape(x)[1], K.shape(x)[2], 1])
+        unif_noise = K.random_uniform(K.shape(x))
         drop_prob = (
             K.log(self.get_p() + eps)
             - K.log(1. - self.get_p() + eps)
