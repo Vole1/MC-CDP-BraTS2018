@@ -376,7 +376,7 @@ def _separable_conv_block_do(ip, filters, net_type, kernel_size=(3, 3), strides=
         if net_type == NetType.mc_do:
             x = Dropout(do_rate, name='dropout0_%s' % (block_id))(x, training=True)
         elif net_type == NetType.mc_df:
-            x = Dropout(do_rate, noise_shape=(x.shape[0], 1, 1, x.shape[-1]), name='dropfilter_%s' % (block_id))\
+            x = Dropout(do_rate, noise_shape=(x.shape[0], 1, 1, x.shape[-1]), name='dropfilter0_%s' % (block_id))\
                 (x, training=True)
         x = Activation('relu')(x)
         x = SeparableConv2D(filters, kernel_size, name='separable_conv_2_%s' % block_id, padding='same',
@@ -385,7 +385,7 @@ def _separable_conv_block_do(ip, filters, net_type, kernel_size=(3, 3), strides=
         if net_type == NetType.mc_do:
             x = Dropout(do_rate, name='dropout1_%s' % (block_id))(x, training=True)
         elif net_type == NetType.mc_df:
-            x = Dropout(do_rate, noise_shape=(x.shape[0], 1, 1, x.shape[-1]), name='dropfilter_%s' % (block_id))\
+            x = Dropout(do_rate, noise_shape=(x.shape[0], 1, 1, x.shape[-1]), name='dropfilter1_%s' % (block_id))\
                 (x, training=True)
         x = Activation('relu')(x)
 
